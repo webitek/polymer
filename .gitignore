@@ -1,0 +1,8 @@
+# IDE
+/.idea
+
+# Git
+/.git
+
+# Node
+/bower_components

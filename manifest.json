@@ -1,0 +1,7 @@
+{
+  "name": "privat-app",
+  "short_name": "privat-app",
+  "description": "description",
+  "start_url": "/",
+  "display": "standalone"
+}

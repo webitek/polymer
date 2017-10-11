@@ -1,0 +1,156 @@
+<link rel="import" href="https://cdn.rawgit.com/download/polymer-cdn/1.5.0/lib/iron-ajax/iron-ajax.html">
+
+<dom-module id="privat-app">
+  <!----------------------------------------------------------------------------------------->
+
+  <!--<script src="//d3js.org/d3.v4.min.js"></script>-->
+  <!----------------------------------------------------------------------------------------->
+
+
+
+  <!----------------------------------------------------------------------------------------->
+  <script src="https://d3js.org/d3.v4.js"></script>
+  <!--<script src="https://d3js.org/d3-selection.v1.js"></script>-->
+  <!----------------------------------------------------------------------------------------->
+
+  <!----------------------------------------------------------------------------------------->
+
+  <!----------------------------------------------------------------------------------------->
+
+
+  <template>
+    <style>
+      h1{
+        font-size: 30px;
+      }
+      th{
+        color: #8492a6;
+        font-size: 12px;
+        font-weight: 700;
+        text-align: left;
+      }
+      td{
+        min-width: 100px;
+      }
+      tr>td:first-of-type{
+        font-weight: bold;
+      }
+    </style>
+
+    <h1>Наличный курс ПриватБанка (в отделениях):</h1>
+
+    <table>
+      <thead>
+      <tr>
+        <th>Валюта</th>
+        <th>Покупка</th>
+        <th>Продажа</th>
+      </tr>
+      </thead>
+      <template is="dom-repeat" items="[[repos]]">
+          <tbody>
+            <tr>
+              <td>{{item.ccy}}</td>
+              <td>{{item.buy}}</td>
+              <td>{{item.sale}}</td>
+            </tr>
+          </tbody>
+      </template>
+    </table>
+
+    <iron-ajax
+            id="requestRepos"
+            url="https://api.privatbank.ua/p24api/pubinfo?json&exchange&coursid=5"
+            params='{"type":"all"}'
+            handle-as="json"
+            on-response="handleResponse"></iron-ajax>
+  </template>
+
+
+
+  <script>
+      Polymer({
+          is: 'privat-app',
+          properties: {
+              repos: {
+                  type: Array
+              }
+          },
+          ready: function () {
+              this.$.requestRepos.generateRequest();
+          },
+          handleResponse: function (data) {
+              this.repos = data.detail.response;
+          }
+      });
+
+      var svg = d3.select("svg"),
+          margin = {top: 20, right: 20, bottom: 30, left: 80},
+          width = +svg.attr("width") - margin.left - margin.right,
+          height = +svg.attr("height") - margin.top - margin.bottom;
+
+      var tooltip = d3.select("body").append("div").attr("class", "toolTip");
+
+      d3.select("body").append("div").attr("class", "description");
+
+      var x = d3.scaleLinear().range([0, width]);
+      var y = d3.scaleBand().range([height, 0]);
+
+      var g = svg.append("g")
+          .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+      d3.json("privat-data.json", function(error, data) {
+          if (error) throw error;
+
+          data.sort(function(a, b) { return a.buy - b.buy; });
+
+          x.domain([0, d3.max(data, function(d) {return d.buy; })]);
+          y.domain(data.map(function(d) { return d.ccy; })).padding(0.1);
+
+          g.append("g")
+              .attr("class", "x axis")
+              .attr("transform", "translate(0," + height + ")")
+              .call(d3.axisBottom(x).ticks(5).tickFormat(function(d) {
+                  return parseInt(d); }).tickSizeInner([-height]));
+
+          g.append("g")
+              .attr("class", "y axis")
+              .call(d3.axisLeft(y));
+
+
+          g.selectAll(".bar")
+              .data(data)
+              .enter().append("rect")
+              .attr("class", "bar")
+              .attr("x", 0)
+              .attr("height", y.bandwidth()/2)
+              .attr("y", function(d) { return y(d.ccy); })
+              .attr("width", function(d) { return x(d.buy); })
+              .on("mousemove", function(d){
+                  tooltip
+                      .style("left", d3.event.pageX - 50 + "px")
+                      .style("top", d3.event.pageY - 70 + "px")
+                      .style("display", "inline-block")
+                      .html("Покупка " + (d.ccy) + "<br>" + (+d.buy).toFixed(3) + " грн");
+              })
+              .on("mouseout", function(d){ tooltip.style("display", "none");});
+
+          g.selectAll(".sale")
+              .data(data)
+              .enter().append("rect")
+              .attr("class", "sale")
+              .attr("x", 0)
+              .attr("height", y.bandwidth()/2)
+              .attr("y", function(d) { return y(d.ccy) + y.bandwidth()/2; })
+              .attr("width", function(d) { return x(d.sale); })
+              .on("mousemove", function(d){
+                  tooltip
+                      .style("left", d3.event.pageX - 50 + "px")
+                      .style("top", d3.event.pageY - 70 + "px")
+                      .style("display", "inline-block")
+                      .html("Продажа " + (d.ccy) + "<br>" + (+d.sale).toFixed(3) + " грн");
+              })
+              .on("mouseout", function(d){ tooltip.style("display", "none");});
+      });
+  </script>
+</dom-module>
